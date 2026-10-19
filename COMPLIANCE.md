@@ -23,12 +23,15 @@ own compliance officer review how they use it.
 1. **No offer of services.** No firm name, logo, contact details, fee information or invitation to become a client.
 2. **No specific securities.** No tickers or company names presented as examples of what to buy, hold or sell.
    Illustrations use made-up numbers.
-3. **No performance.** No returns, track records, back-tests or hypothetical performance of any kind.
+3. **No performance.** No returns, track records, back-tests or hypothetical performance of any kind. A worked example
+   shows the arithmetic of a formula on made-up inputs and stops before any return or yield figure.
 4. **No holdings or model contents.** Nothing about what any person, fund or model owns or how it is weighted.
 5. **No testimonials or endorsements.**
 6. **No paid-source text.** Ideas may be credited; text from subscription research is never copied.
 7. **No trade timing.** Nothing that would let a reader anticipate when a specific portfolio will trade.
-8. **Disclaimer stays.** The README's "educational material only" notice is never removed.
+8. **Method, not model.** A setting (a limit, a band, a placement) is stated as this method's choice, never as advice to
+   the reader. Empirical claims cite a source or are labeled as working assumptions.
+9. **Disclaimer stays.** The README's "educational material only" notice is never removed.
 
 ## If a firm adopts these rules
 
