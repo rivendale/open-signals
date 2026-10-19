@@ -1,16 +1,20 @@
 # Principles
 
+These are the working assumptions of this method, stated so they can be argued with. They describe how the method
+reasons, not what any reader should own.
+
 ## A barbell
 
-Most capital sits at two ends: **real assets** (energy, land, food, infrastructure, the physical inputs every economy
+The method concentrates research at two ends: **real assets** (energy, land, food, infrastructure, the physical inputs every economy
 needs regardless of the cycle) and **high-growth technology** (early in its adoption curve, where the risk is high and the
 upside is not capped). Everything between the two ends is treated as market exposure and adjustment, not as the thesis.
 
 ## Adoption curves, not price
 
-For a new technology, the investment case is the adoption curve: moving from about 5% to about 50% adoption tends to be
-fast and predictable once it starts, while inertia (fear, lack of attention, incumbents' momentum) holds it back at the
-start. Short-term market prices and fear are not treated as signals about that curve.
+For a new technology, the method's case is the adoption curve. Its **working assumption** is that once adoption passes
+about 5%, the move toward about 50% is faster and easier to forecast than the start, while inertia (fear, lack of
+attention, incumbents' momentum) holds the start back. This is an assumption, not a finding: each use of it names the
+adoption measure and where it is reported. Short-term market prices and fear are not treated as signals about the curve.
 
 A counter-argument is held against this on purpose: in past infrastructure booms (railroads, telecom fiber), demand kept
 growing while the companies that borrowed to build ahead of demand were wiped out, and the companies that used the cheap
@@ -23,8 +27,9 @@ Research runs on several themes at once, plus standalone best ideas outside any 
 
 ## Strategic real-asset sleeve
 
-A standing allocation to real assets such as precious metals is held as a strategic position, split between the metal
-itself and the producers (who are operating leverage on the metal), rather than traded around.
+The method allows a strategic real-asset sleeve, such as precious metals, treated as a long-term position rather than
+traded around. When used, it is split between the metal itself and the producers, because producers are operating
+leverage on the metal and the two behave differently.
 
 ## Funds are proxies
 
