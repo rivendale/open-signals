@@ -2,7 +2,8 @@
 
 A kill criterion is the written condition that ends a position (sell rule SR-3). The pipeline will not admit a name
 without one ([pipeline.md](pipeline.md), stage S3). In the speculative sleeve the funding-dependence rule (SR-1) does not
-apply, so kill criteria are the only sell control there.
+apply, so the kill criteria carry most of the weight there. The forensic rule (SR-2) and the tax rule (SR-4) still apply
+in every sleeve.
 
 ## The shape of a kill criterion
 
@@ -23,20 +24,23 @@ These apply to any name that borrows or raises money to build capacity. Any one 
 |---|---|---|---|
 | K1 | Distress language | A going-concern paragraph, a covenant breach, or a lender waiver or forbearance | Quarterly report notes; a current report for a triggering event |
 | K2 | Liquidity runway | Cash plus committed, undrawn financing covers less than 12 months of the company's own stated capital spending and debt service | Quarterly report, liquidity section |
-| K3 | Anchor customer lost | A disclosed termination, default, or a cut of more than 25% in contract value by a customer that is more than 25% of backlog | Current report; quarterly backlog or remaining performance obligations |
+| K3 | Anchor customer lost | A disclosed termination, default, or a cut of more than 25% in contract value by a customer that was more than 25% of backlog **at the last filing before the event** | Current report; quarterly backlog or remaining performance obligations |
 
 ## Patterns for name-specific criteria
 
-Each name gets one or two criteria of its own. These patterns cover most cases:
+Each name gets one or two criteria of its own. The patterns below are **templates, not finished criteria**. A pattern
+passes stage S3 only once it names the metric, the baseline and its date, and the exact event or number that fires it.
+For example, "cuts spend materially" becomes "cuts its contracted annual spend by more than 25% from the level in the
+last annual report".
 
 | Pattern | Write it as | Example (made-up) |
 |---|---|---|
-| Customer concentration | The largest customer cuts spend materially or leaves | "The customer that is 60% of revenue cuts its contract, per a filing or call" |
-| Own-guidance miss | The company misses a target it set itself, by a stated margin or for a stated number of periods | "Delivered capacity misses the company's year-end target by more than 25% for two quarters" |
+| Customer concentration | The largest customer cuts spend by more than a stated percentage from a dated baseline, or leaves | "The customer that was 60% of revenue in the last annual report cuts contracted spend by more than 25%, per a filing" |
+| Own-guidance miss | The company misses a target it set itself, by a stated margin, measured on a stated date | "Capacity in service at year end, as reported in the annual report, is more than 25% below the target the company gave at the start of the year" |
 | Schedule slip | A project slips past the company's own schedule by a stated time | "Energization slips more than two quarters past the stated date" |
 | Distressed financing | New money only on distressed terms | "A new raise priced as secured debt at 12% or more, or equity with warrants" |
 | Share loss | Revenue falls while the market it serves grows | "Two quarters of revenue decline while industry spending rises" |
-| Accounting or regulatory | A restatement, an auditor change, or an adverse regulator outcome | "Another restatement, or an adverse outcome in a disclosed inquiry" |
+| Accounting or regulatory | A restatement, an auditor change, or a named regulatory event | "Another restatement, or a disclosed enforcement action or settlement in the inquiry named in the last annual report" |
 | Policy reversal | The government decision the thesis depends on is reversed | "The price floor or subsidy the thesis depends on is withdrawn or cut" (see below) |
 
 ## The policy-reversal check

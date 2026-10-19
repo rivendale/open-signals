@@ -51,10 +51,11 @@ Checked at each annual filing. Each is a prompt to read the filing, not a verdic
 
 - **Beneish M-Score.** An earnings-manipulation screen from Beneish, "The Detection of Earnings Manipulation",
   *Financial Analysts Journal* 55(5), 1999. It was estimated on a sample of known manipulators against matched
-  companies. An implementation states which form it uses (the eight-variable or the five-variable model) and its cutoff.
-  Both -1.78 and -2.22 are cited in secondary sources; the implementation names its source for the value. A score in the
-  band between the two is a reason to read more closely. Beneish, Lee and Nichols, "Earnings Manipulation and Expected
-  Returns", *Financial Analysts Journal* 69(2), 2013, is about predicting returns, a different question from detection.
+  companies. An implementation records the exact coefficients and input definitions it uses, and its cutoff with a
+  source. Beneish, Lee and Nichols, "Earnings Manipulation and Expected Returns", *Financial Analysts Journal* 69(2), 2013,
+  use the eight-variable model with a cutoff of -1.78 and note that the right cutoff depends on the relative cost of the
+  two kinds of error. Their paper is mainly about predicting returns, a different question from detection. This method
+  also reads a score between -2.22 and -1.78 more closely; that band is this method's choice, not a validated interval.
 - **Auditor change** or a **non-reliance / restatement** disclosure.
 - **Earnings ahead of cash.** Net income above operating cash flow in two consecutive years, or total accruals to total
   assets rising in two consecutive years, where:
@@ -64,15 +65,20 @@ Checked at each annual filing. Each is a prompt to read the filing, not a verdic
   ```
 
 - **Longer asset lives.** The company lengthens the useful life it depreciates its equipment over (an accounting-policy
-  note). Depreciation falls and reported profit rises with no change in cash earned. Re-measure operating profit at the
-  old life:
+  note). This is a change in estimate and applies from its effective date forward. Depreciation falls, so pre-tax profit
+  rises, but the change itself brings in no cash. Re-measure the next full year's straight-line depreciation both ways:
 
   ```
-  extra profit this year  ~= depreciable cost / old life - depreciable cost / new life
+  depreciable base        = carrying amount at the change date - residual value
+  depreciation, old basis = depreciable base / old remaining life
+  depreciation, new basis = depreciable base / new remaining life
+  extra pre-tax profit    = old basis - new basis
   ```
 
-  Example: 1,000 of equipment moved from a 4-year to a 5-year life adds about 250 - 200 = 50 of profit a year. A flag to
-  read the filing and the peers' choices, not a verdict: a longer life can be right if the equipment really lasts.
+  Example: equipment that cost 1,000, with zero residual value, is two years into a 4-year life, so it carries 500. The
+  life is extended to 5 years in total. Next year's depreciation falls from 500 / 2 = 250 to 500 / 3 = about 167, adding
+  about 83 of pre-tax profit. A flag to read the filing and the peers' choices, not a verdict: a longer life can be right
+  if the equipment really lasts.
 
 **Blind spots:** annual, and every one of these can have an innocent explanation. A flag starts a reading; only SR-2's
 written record ends one.
@@ -90,8 +96,10 @@ For companies that build capacity for a new technology, record which of three wa
 For "paid on use, with debt", record three things:
 - Debt and lease obligations against **contracted** use.
 - Who holds the contracts, and whether a larger company guarantees them.
-- Whether the contracts run **longer or shorter** than the debt. Contracts that outlast the debt are a refinancing risk at
-  the parent; debt that outlasts the contracts is a demand risk.
+- Whether the contracts run **longer or shorter** than the debt. When the contracts outlast the debt, the borrower (or a
+  guarantor, where there is one) may need to refinance before the contracts finish paying; when the debt outlasts the
+  contracts, it depends on new demand. Tenor alone does not settle either: read the cash flows and how the debt is
+  repaid.
 
 In this method, a builder with net cash ranks ahead of one that borrows ahead of contracts, other stages being equal.
 

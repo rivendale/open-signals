@@ -22,6 +22,14 @@ Fixed (from an independent second read of v0.1):
   (2013).
 - Funding dependence: capital expenditure is a positive outflow; flip a vendor's negative sign.
 
+Fixed (from the second read of the v0.2 draft):
+- Asset-life formula re-measures prospectively, on carrying amount and remaining lives.
+- Kill-criterion patterns are templates that must name a metric, a dated baseline and a threshold; K3 uses the customer's
+  share before the event.
+- SR-2 and SR-4 still apply in the speculative sleeve.
+- M-Score: exact coefficients required; the -2.22 to -1.78 band is this method's choice.
+- Wash-sale scope matches Revenue Ruling 2008-5; contract-versus-debt tenor locates refinancing risk at the borrower.
+
 ## v0.1
 
 First release: principles, pipeline, sell rules, signals, data quality, portfolio process.

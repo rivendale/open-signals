@@ -52,8 +52,10 @@ The method's placement settings follow. Tax treatment depends on the investor; t
 - Holdings whose income is taxed as ordinary income, such as most real-estate investment trust dividends, are placed in
   tax-advantaged accounts when there is room.
 - Losses are harvested in taxable accounts first. The 30-day wash-sale rule is observed across every account, including
-  retirement accounts: the IRS has ruled that buying the same security in an IRA within the window disallows the loss
-  (Revenue Ruling 2008-5).
+  retirement accounts. The IRS has ruled that buying substantially identical securities in an IRA or Roth IRA within 30
+  days before or after a loss sale in a taxable account disallows the loss, and the IRA's basis is not increased
+  (Revenue Ruling 2008-5). The ruling does not cover every kind of retirement plan; this method treats them all the same
+  way.
 - A long-term holding period means more than one year (Internal Revenue Code section 1222).
 
 ## Who does what
