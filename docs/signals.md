@@ -31,6 +31,16 @@ Checked at each annual filing:
   the filing, not a verdict.
 - **Auditor change** or a **non-reliance / restatement** disclosure.
 - **Accruals** growing much faster than revenue.
+- **Longer asset lives.** The company lengthens the useful life it depreciates its equipment over (an accounting-policy
+  note). Depreciation falls and reported profit rises with no change in cash earned. Re-measure operating profit at the
+  old life:
+
+  ```
+  extra profit this year  ~= depreciable cost / old life - depreciable cost / new life
+  ```
+
+  Example: 1,000 of equipment moved from a 4-year to a 5-year life adds about 250 - 200 = 50 of profit a year. A flag to
+  read the filing and the peers' choices, not a verdict: a longer life can be right if the equipment really lasts.
 
 ## How a builder gets paid
 
