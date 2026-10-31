@@ -1,7 +1,7 @@
 # Kill criteria
 
 A kill criterion is the written condition that ends a position (sell rule SR-3). The pipeline will not admit a name
-without one ([pipeline.md](pipeline.md), stage S3). In the speculative sleeve the funding-dependence rule (SR-1) does not
+without one ([pipeline.md](pipeline.md), stage S3). In the speculative sleeve the funding rule (SR-1a and SR-1b) does not
 apply, so the kill criteria carry most of the weight there. The forensic rule (SR-2) and the tax rule (SR-4) still apply
 in every sleeve.
 
@@ -13,8 +13,22 @@ Every kill criterion has three parts:
 2. **A threshold**: a number or an event that can be checked without judgment.
 3. **Where it surfaces first**: the filing, report or call where it would appear.
 
-It never contains price, drawdown, a valuation multiple, a credit-spread level or an analyst's rating change. A kill
-criterion is written **before** the buy and changed only through the same review that admitted the name.
+A kill criterion is written **before** the buy and changed only through the same review that admitted the name.
+
+### What a kill criterion never contains
+
+This is the canonical list. The pipeline ([pipeline.md](pipeline.md)) and the sell rules
+([sell-rules.md](sell-rules.md#what-never-triggers-a-sell)) point here.
+
+- A price level, a price move or a drawdown.
+- A valuation multiple.
+- A market credit-spread level or a bond price.
+- An analyst's rating or target change.
+- Headlines or sentiment.
+
+The terms of new money the company actually accepts (a coupon, warrants, security) are different. They are a company
+event, reported in a filing, so the distressed-financing pattern below may use them. A market spread on the company's
+existing debt may not be used.
 
 ## Shared criteria for capital-intensive builders
 
@@ -23,8 +37,8 @@ These apply to any name that borrows or raises money to build capacity. Any one 
 | Code | Observable | Threshold | Surfaces first |
 |---|---|---|---|
 | K1 | Distress language | A going-concern paragraph, a covenant breach, or a lender waiver or forbearance | Quarterly report notes; a current report for a triggering event |
-| K2 | Liquidity runway | Cash plus committed, undrawn financing covers less than 12 months of the company's own stated capital spending and debt service | Quarterly report, liquidity section |
-| K3 | Anchor customer lost | A disclosed termination, default, or a cut of more than 25% in contract value by a customer that was more than 25% of backlog **at the last filing before the event** | Current report; quarterly backlog or remaining performance obligations |
+| K2 | Liquidity runway | Runway is under four quarters (12 months). Runway in quarters = 4 * (cash + short-term investments + committed undrawn facilities) / (operating cash burn + capital expenditure + scheduled debt service + lease payments), each term as defined in [signals.md](signals.md#runway) | Quarterly report: liquidity section, debt and lease maturity notes |
+| K3 | Anchor customer lost | A disclosed termination, default, or a cut of more than 25% in contract value by a customer that was more than 25% of backlog **at the last filing before the event**. When backlog by customer is not disclosed, use the customer's revenue share instead and mark it **unverified** ([signals.md](signals.md#customer-concentration)) | Current report; quarterly backlog or remaining performance obligations |
 
 ## Patterns for name-specific criteria
 
