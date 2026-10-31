@@ -64,19 +64,22 @@ runway (quarters)    = 4 * liquidity / annual outflow
 - **Committed undrawn facilities:** the undrawn part of committed credit lines the company can draw today, with every
   draw condition currently met. An uncommitted line, an at-the-market equity program, or a facility with an unmet
   condition is not counted.
-- **Operating cash burn:** max(0, -(TTM operating cash flow + interest paid + lease payments inside operating cash
-  flow)). This is the burn before financing costs, so interest and leases are not counted twice. Stock-based
-  compensation is not deducted here; it is not a cash outflow.
+- **Operating cash burn:** max(0, -(TTM operating cash flow + interest paid inside operating cash flow, including the
+  interest part of finance-lease payments + operating-lease payments)). Use operating cash flow after the IFRS
+  normalization above. This is the burn before financing costs, so interest and leases are not counted twice.
+  Stock-based compensation is not deducted here; it is not a cash outflow.
 - **Capital expenditure:** the company's stated capital spending for the next twelve months; TTM capital expenditure
   when it states none.
-- **Scheduled debt service:** interest and principal due in the next twelve months, from the debt maturity note.
+- **Scheduled debt service:** interest and principal due in the next twelve months, from the debt maturity note, excluding lease
+  liabilities (counted under lease payments).
 - **Lease payments:** all lease payments due in the next twelve months, operating and finance, from the lease maturity
   table.
 
 Runway is unlimited when annual outflow is 0.
 
-**Fires SR-1b (unfunded burn)** when free cash flow is negative for the trailing twelve months and runway is under four
-quarters, whatever the funding dependence, including "not applicable".
+**Fires SR-1b (unfunded burn)** when the business burns cash (operating cash burn plus TTM capital expenditure is above
+0) and runway is under four quarters, whatever the funding dependence, including "not applicable". The gate is cash, not
+free cash flow, so stock-based compensation alone cannot make a cash-generating business read as burning.
 
 Example: burn of 400, no stock or debt raised, so funding dependence is not applicable. Cash 150, short-term investments
 50 and no undrawn facility give liquidity of 200. Operating cash burn 250, capital expenditure 150, debt service 60 and
@@ -232,13 +235,15 @@ Before a collar is opened on a lot in a taxable account, record:
    qualified covered call that is in the money still suspends the stock's holding period while it is open
    (section 1092(f)).
 3. **Loss deferral.** A loss on one leg of a straddle is deferred to the extent of unrecognized gain in the offsetting
-   position (section 1092(a)). A collared lot is therefore a poor candidate for a SR-4 loss harvest: unwind the collar
-   and record the deferral before the harvest is planned.
+   position (section 1092(a)). A collared lot is therefore a poor candidate for an SR-4 loss harvest: record any
+   deferred loss, and unwind the collar before the harvest is planned.
 4. **Constructive sale.** Whether the collar, on an appreciated lot, removes substantially all of both the risk of loss
    and the chance of gain. If it does, the lot may be treated as sold, and the gain taxed, when the collar is opened
-   (section 1259). There is no bright-line band in the regulations, so this method records the put and call strikes as a
-   share of spot and the reason the band is wide enough. A collar closed within 30 days after the end of the tax year,
-   with the stock then held unhedged for 60 days, falls under the closed-transaction exception (section 1259(c)(3)).
+   (section 1259). Treasury has not issued the regulations section 1259(c)(1)(E) authorizes, so there is no
+   bright-line band; this method records the put and call strikes as a share of spot and the reason the band is wide
+   enough. A collar closed on or before the 30th day after the end of the tax year in which it was opened, with the
+   stock then held for 60 days without any position that reduces its risk of loss, falls under the closed-transaction
+   exception (section 1259(c)(3)). The exception removes the constructive sale; it does not lift the straddle rules.
 
 **Rule:** no collar on a short-term lot in a taxable account, unless the written record states the holding-period
 effect and why the collar is still wanted.

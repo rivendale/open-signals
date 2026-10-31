@@ -25,6 +25,7 @@ This is the canonical list. The pipeline ([pipeline.md](pipeline.md)) and the se
 - A market credit-spread level or a bond price.
 - An analyst's rating or target change.
 - Headlines or sentiment.
+- A guidance trim short of the margin the criterion names, or an opportunity cost.
 
 The terms of new money the company actually accepts (a coupon, warrants, security) are different. They are a company
 event, reported in a filing, so the distressed-financing pattern below may use them. A market spread on the company's

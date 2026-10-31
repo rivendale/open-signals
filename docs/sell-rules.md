@@ -50,8 +50,9 @@ trimming. It applies in taxable accounts too, in the order set in
 
 ## What never triggers a sell
 
-The same inputs may never appear in a kill criterion; the canonical list is in
-[kill-criteria.md](kill-criteria.md#what-a-kill-criterion-never-contains).
+What a kill criterion may never contain is listed once, in
+[kill-criteria.md](kill-criteria.md#what-a-kill-criterion-never-contains); none of the items below may trigger a sell
+either.
 
 - **Price level or drawdown depth.** Neither is a fact about the business; the kill criteria are.
 - **Valuation multiple.**

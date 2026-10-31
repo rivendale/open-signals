@@ -18,6 +18,11 @@ Fixed (from the second read of v0.2):
 - K2 counted capital spending and debt service but not operating burn. It now uses runway.
 - A company that burned cash and could not raise had dependence below 1.0, so SR-1 never fired. SR-1b catches it.
   Funding dependence is "not applicable" when external funding is 0 or less.
+- SR-1a no longer requires cash on hand to cover less than four quarters of burn; liquidity is now tested only by SR-1b.
+  A company whose burn is funded from outside fires SR-1a however much cash it holds. SR-1b is gated on cash burn, not
+  free cash flow, so stock-based compensation alone cannot fire it.
+- Runway does not count interest or leases twice: burn adds back only interest and lease payments inside operating cash
+  flow, and debt service excludes lease liabilities.
 - TTM is the sum of four quarters, with Q4 = full year - nine-month year to date. Cash excludes restricted cash.
 - Free cash flow is net of stock-based compensation and finance-lease principal; issuance is net of buybacks; IFRS
   filers are normalized before comparison, with IFRS 18 noted from 1 January 2027.
