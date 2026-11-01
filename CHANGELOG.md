@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Added:
+- [spec/signals.json](spec/signals.json): a machine-readable spec of every computable rule, with inputs (unit and
+  sign), formulas, thresholds, rule IDs and links to the doc sections. Ambiguous cases are marked, not guessed.
+- [spec/vectors/](spec/vectors/): synthetic test vectors with pass, fail and boundary cases for each rule, and the edge
+  cases the docs name (external funding of 0 or less, stock-based-compensation-only burn and SR-1b, Q4 from year-to-date
+  figures, restricted cash, leases counted once, zero days to expiration, the wash-sale window on days 30 and 31, a
+  spouse's account and dividend reinvestment).
+- [reference/](reference/): a stdlib-only Python reference implementation (MIT), a vector runner, and a coverage test
+  that every rule has an implementation and a vector.
+- CI: `.github/workflows/spec.yml` runs the vectors and the coverage test on pull requests and on pushes to main.
+- [docs/thresholds.md](docs/thresholds.md): every numeric threshold with its value, where it is defined, and its
+  source.
+
+No rule changes: the spec encodes v0.3 as written.
+
 ## v0.3
 
 Added:
