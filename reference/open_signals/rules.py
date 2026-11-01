@@ -17,6 +17,7 @@ THRESHOLDS = {
     "k3_backlog_share_min": 0.25,
     "k3_contract_cut_min": 0.25,
     "mscore_read_closely_lower": -2.22,
+    "mscore_read_closely_upper": -1.78,
     "earnings_ahead_of_cash_years": 2,
     "size_ceiling_share_of_sleeve": 0.08,
     "speculative_ceiling_share_of_sleeve": 0.05,
@@ -59,12 +60,17 @@ def _outflow(inputs, key, convention):
 
 def ttm(inputs):
     """Discrete quarters from year-to-date figures; TTM is the last four summed."""
+    keys = ("ytd_3m", "ytd_6m", "ytd_9m", "ytd_12m")
+    years = inputs["fiscal_years"]
     quarters = []
-    for year in inputs["fiscal_years"]:
+    for index, year in enumerate(years):
+        present = [year.get(key) is not None for key in keys]
+        if index < len(years) - 1 and not all(present):
+            raise ValueError("fiscal year %d is not the latest and lacks a year-to-date value" % index)
+        if present != sorted(present, reverse=True):
+            raise ValueError("fiscal year %d has a gap in its year-to-date values" % index)
         previous = 0.0
-        for key in ("ytd_3m", "ytd_6m", "ytd_9m", "ytd_12m"):
-            if year.get(key) is None:
-                break
+        for key in keys[:sum(present)]:
             quarters.append(float(year[key]) - previous)
             previous = float(year[key])
     if len(quarters) < 4:
@@ -130,6 +136,11 @@ def sr1a(inputs):
 
 # --- Runway, SR-1b and K2 ---------------------------------------------------
 
+def _capex_ttm(inputs):
+    return _outflow(inputs, "capital_expenditure_ttm",
+                    inputs.get("outflow_sign_convention", "positive"))
+
+
 def runway(inputs):
     cash = _num(inputs, "cash_and_cash_equivalents", 0.0)
     sti = _num(inputs, "short_term_investments", 0.0)
@@ -141,21 +152,18 @@ def runway(inputs):
         if f.get("kind") == "credit_line" and f.get("committed") and f.get("conditions_met"):
             facilities += float(f["undrawn"])
     liquidity = cash + sti + facilities
+    conv = inputs.get("outflow_sign_convention", "positive")
     ocf = _num(inputs, "operating_cash_flow_ttm")
-    interest = _num(inputs, "interest_paid_in_ocf", 0.0)
-    op_leases = _num(inputs, "operating_lease_payments_in_ocf", 0.0)
-    if interest < 0 or op_leases < 0:
-        raise ValueError("sign: interest and lease payments are positive outflows")
+    interest = _outflow(inputs, "interest_paid_in_ocf", conv)
+    op_leases = _outflow(inputs, "operating_lease_payments_in_ocf", conv)
     op_burn = max(0.0, -(ocf + interest + op_leases))
-    capex_ttm = _num(inputs, "capital_expenditure_ttm", 0.0)
-    planned = inputs.get("capital_expenditure_planned_next_12m")
-    capex = capex_ttm if planned is None else float(planned)
-    debt_service = _num(inputs, "scheduled_debt_service_next_12m", 0.0)
-    leases = _num(inputs, "lease_payments_next_12m", 0.0)
-    for name, v in (("capital expenditure", capex), ("debt service", debt_service),
-                    ("lease payments", leases), ("capital_expenditure_ttm", capex_ttm)):
-        if v < 0:
-            raise ValueError("sign: %s must be a positive outflow" % name)
+    capex_ttm = _capex_ttm(inputs)
+    if inputs.get("capital_expenditure_planned_next_12m") is None:
+        capex = capex_ttm
+    else:
+        capex = _outflow(inputs, "capital_expenditure_planned_next_12m", conv)
+    debt_service = _outflow(inputs, "scheduled_debt_service_next_12m", conv)
+    leases = _outflow(inputs, "lease_payments_next_12m", conv)
     outflow = op_burn + capex + debt_service + leases
     quarters = UNLIMITED if outflow == 0 else 4.0 * liquidity / outflow
     return {
@@ -176,7 +184,7 @@ def sr1b(inputs):
     if _speculative(inputs):
         out["fires"] = NOT_APPLIED
         return out
-    burns = out["operating_cash_burn"] + _num(inputs, "capital_expenditure_ttm", 0.0) > 0
+    burns = out["operating_cash_burn"] + _capex_ttm(inputs) > 0
     out["burns_cash"] = burns
     out["fires"] = burns and _short_runway(out["runway_quarters"])
     return out
@@ -246,11 +254,15 @@ def mscore(inputs):
     if not inputs.get("cutoff_source"):
         raise ValueError("an implementation records its cutoff with a source")
     lower = THRESHOLDS["mscore_read_closely_lower"]
-    if abs(m - cutoff) <= EPS or abs(m - lower) <= EPS:
+    upper = THRESHOLDS["mscore_read_closely_upper"]
+    in_band = lower < m < upper
+    if any(abs(m - edge) <= EPS for edge in (cutoff, lower, upper)):
         status = "ambiguous_boundary"
+    elif m > cutoff and in_band:
+        status = "ambiguous_overlap"  # the cutoff lies inside or below the band
     elif m > cutoff:
         status = "flag"
-    elif m > lower:
+    elif in_band:
         status = "read_closely"
     else:
         status = "none"
@@ -303,8 +315,10 @@ def longer_asset_lives(inputs):
 
 def collar_price(inputs):
     call_bid, put_ask = inputs.get("call_bid"), inputs.get("put_ask")
-    if not call_bid or not put_ask:
-        return {"status": "cannot_price"}
+    for quote in (call_bid, put_ask):
+        # missing, zero or negative: cannot price, never free
+        if isinstance(quote, bool) or not isinstance(quote, (int, float)) or quote <= 0:
+            return {"status": "cannot_price"}
     days = _num(inputs, "days_to_expiration")
     out = {"net_credit": float(call_bid) - float(put_ask)}
     if days < THRESHOLDS["collar_min_days_to_expiration"]:
@@ -389,6 +403,8 @@ def wash_sale(inputs):
         return out
     kinds = ("purchase", "dividend_reinvestment", "bought_call")
     for a in inputs.get("acquisitions", []):
+        if a.get("kind") not in kinds + ("sold_put_deep_itm",):
+            raise ValueError("unknown acquisition kind: %s" % a.get("kind"))
         if a.get("owner") not in ("self", "spouse"):
             raise ValueError("acquirer must be 'self' or 'spouse'; others are not covered")
         when = datetime.date.fromisoformat(a["date"])
@@ -396,10 +412,8 @@ def wash_sale(inputs):
             continue
         if a["kind"] in kinds:
             out["triggering"].append(a["id"])
-        elif a["kind"] == "sold_put_deep_itm":
-            out["needs_review"].append(a["id"])
         else:
-            raise ValueError("unknown acquisition kind: %s" % a["kind"])
+            out["needs_review"].append(a["id"])
     out["wash_sale"] = bool(out["triggering"])
     return out
 

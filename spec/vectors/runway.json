@@ -75,6 +75,15 @@
     {"id": "k2-not-a-builder", "rule": "K2", "case": "edge", "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders",
      "description": "K2 is a shared criterion for capital-intensive builders only.",
      "inputs": {"capital_intensive_builder": false, "cash_and_cash_equivalents": 100, "operating_cash_flow_ttm": 100, "capital_expenditure_ttm": 0, "scheduled_debt_service_next_12m": 200},
-     "expected": {"fires": "not_applicable"}}
+     "expected": {"fires": "not_applicable"}},
+
+    {"id": "runway-negative-convention", "rule": "signal.runway", "case": "edge", "doc": "docs/signals.md#runway",
+     "description": "The doc's example from a vendor that reports outflows as negative numbers: they are flipped and runway is still 1.6.",
+     "inputs": {"outflow_sign_convention": "negative", "cash_and_cash_equivalents": 150, "short_term_investments": 50, "operating_cash_flow_ttm": -250, "capital_expenditure_planned_next_12m": -150, "capital_expenditure_ttm": -150, "scheduled_debt_service_next_12m": -60, "lease_payments_next_12m": -40},
+     "expected": {"liquidity": 200, "capital_expenditure_used": 150, "annual_outflow": 500, "runway_quarters": 1.6}},
+    {"id": "sr1b-negative-convention", "rule": "SR-1b", "case": "edge", "doc": "docs/signals.md#runway",
+     "description": "The doc's example with negative-outflow inputs: the gate uses the flipped TTM capex and SR-1b fires.",
+     "inputs": {"sleeve": "growth", "outflow_sign_convention": "negative", "cash_and_cash_equivalents": 150, "short_term_investments": 50, "operating_cash_flow_ttm": 0, "capital_expenditure_planned_next_12m": -150, "capital_expenditure_ttm": -150, "scheduled_debt_service_next_12m": -60, "lease_payments_next_12m": -40},
+     "expected": {"burns_cash": true, "runway_quarters": 3.2, "fires": true}}
   ]
 }

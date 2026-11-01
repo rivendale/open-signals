@@ -26,7 +26,8 @@
     {"id": "concentration_max_share", "value": 0.25, "unit": "fraction", "comparison": "flag when top-customer share > value or any backlog share > value", "used_by": ["signal.customer_concentration"], "doc": "docs/signals.md#customer-concentration"},
     {"id": "k3_backlog_share_min", "value": 0.25, "unit": "fraction", "comparison": "anchor customer when backlog share (or revenue-share fallback) at the last filing before the event > value", "used_by": ["K3"], "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders"},
     {"id": "k3_contract_cut_min", "value": 0.25, "unit": "fraction", "comparison": "a cut in contract value counts when > value", "used_by": ["K3"], "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders"},
-    {"id": "mscore_read_closely_lower", "value": -2.22, "unit": "score", "comparison": "lower edge of the band read more closely; upper edge is the implementation's cutoff", "used_by": ["flag.mscore"], "doc": "docs/signals.md#forensic-flags"},
+    {"id": "mscore_read_closely_lower", "value": -2.22, "unit": "score", "comparison": "lower edge of the band read more closely (exclusive)", "used_by": ["flag.mscore"], "doc": "docs/signals.md#forensic-flags"},
+    {"id": "mscore_read_closely_upper", "value": -1.78, "unit": "score", "comparison": "upper edge of the band read more closely (exclusive); fixed by the doc, independent of the implementation's cutoff", "used_by": ["flag.mscore"], "doc": "docs/signals.md#forensic-flags"},
     {"id": "earnings_ahead_of_cash_years", "value": 2, "unit": "fiscal years", "comparison": "consecutive years required", "used_by": ["flag.earnings_ahead_of_cash"], "doc": "docs/signals.md#forensic-flags"},
     {"id": "size_ceiling_share_of_sleeve", "value": 0.08, "unit": "fraction of sleeve", "comparison": "target size <= value * sleeve weight", "used_by": ["sizing.precedence"], "doc": "docs/portfolio-process.md#limits"},
     {"id": "speculative_ceiling_share_of_sleeve", "value": 0.05, "unit": "fraction of sleeve", "comparison": "speculative target size <= value * sleeve weight", "used_by": ["sizing.precedence"], "doc": "docs/portfolio-process.md#limits"},
@@ -52,7 +53,11 @@
         "ttm = sum of the last four discrete quarters"
       ],
       "outputs": ["quarters", "ttm"],
-      "notes": ["Fewer than four quarters is an error: a single quarter is never multiplied by four."]
+      "notes": [
+        "Fewer than four quarters is an error: a single quarter is never multiplied by four.",
+        "Every fiscal year except the latest must have all four year-to-date values, so a missing fourth quarter is an error, never skipped.",
+        "A year whose year-to-date values have a gap (for example ytd_9m without ytd_6m) is an error."
+      ]
     },
     {
       "id": "signal.funding_dependence",
@@ -104,6 +109,7 @@
       "kind": "definition",
       "doc": "docs/signals.md#runway",
       "inputs": [
+        {"name": "outflow_sign_convention", "unit": "enum", "sign": "n/a", "note": "positive (default) or negative, as in signal.funding_dependence. Applies to every positive_outflow input below; liquidity and operating_cash_flow_ttm are not flipped."},
         {"name": "cash_and_cash_equivalents", "unit": "currency", "sign": "nonnegative", "note": "Excluding restricted cash."},
         {"name": "restricted_cash", "unit": "currency", "sign": "nonnegative", "note": "Recorded, never added to liquidity."},
         {"name": "short_term_investments", "unit": "currency", "sign": "nonnegative", "note": "Marketable securities reported as current, excluding pledged or restricted ones."},
@@ -231,18 +237,21 @@
         {"name": "cutoff_source", "unit": "text", "sign": "n/a", "note": "Required: the source of the cutoff."}
       ],
       "formula": [
-        "status = flag when m_score > cutoff",
-        "status = read_closely when mscore_read_closely_lower < m_score < cutoff",
-        "status = none when m_score < mscore_read_closely_lower",
-        "status = ambiguous_boundary when m_score equals either edge"
+        "in_band = mscore_read_closely_lower < m_score < mscore_read_closely_upper",
+        "status = ambiguous_boundary when m_score equals the cutoff or either band edge",
+        "status = ambiguous_overlap when m_score > cutoff and in_band (only possible when the cutoff is below -1.78)",
+        "status = flag when m_score > cutoff and not in_band",
+        "status = read_closely when in_band and m_score < cutoff",
+        "status = none otherwise (below the band, or between the band and a cutoff above -1.78)"
       ],
-      "thresholds": ["mscore_read_closely_lower"],
+      "thresholds": ["mscore_read_closely_lower", "mscore_read_closely_upper"],
       "applies_to": "Score-based: checked at each annual filing.",
       "outputs": ["status"],
       "ambiguous": true,
       "ambiguities": [
         {"note": "The docs do not fix the coefficients, the model form or the cutoff; they require the implementation to record them, citing -1.78 as the 2013 paper's cutoff.", "doc": "docs/signals.md#forensic-flags"},
-        {"note": "Whether a score exactly at the cutoff is a flag, and whether the band \"between -2.22 and -1.78\" includes its edges, is not stated.", "doc": "docs/signals.md#forensic-flags"}
+        {"note": "Whether a score exactly at the cutoff is a flag, and whether the band \"between -2.22 and -1.78\" includes its edges, is not stated.", "doc": "docs/signals.md#forensic-flags"},
+        {"note": "The band is fixed at -2.22 to -1.78, but the cutoff is the implementation's. When the cutoff lies inside or below the band, a score above the cutoff and inside the band is both a flag and a score to read closely; the doc does not say which applies. The reference implementation returns ambiguous_overlap there.", "doc": "docs/signals.md#forensic-flags"}
       ]
     },
     {
@@ -305,14 +314,14 @@
       "kind": "definition",
       "doc": "docs/signals.md#collar-plus-income",
       "inputs": [
-        {"name": "call_bid", "unit": "price", "sign": "positive", "note": "Missing or zero means cannot price."},
-        {"name": "put_ask", "unit": "price", "sign": "positive", "note": "Missing or zero means cannot price, never free."},
+        {"name": "call_bid", "unit": "price", "sign": "positive", "note": "Missing, zero or negative means cannot price."},
+        {"name": "put_ask", "unit": "price", "sign": "positive", "note": "Missing, zero or negative means cannot price, never free."},
         {"name": "spot", "unit": "price", "sign": "positive"},
         {"name": "days_to_expiration", "unit": "calendar days", "sign": "nonnegative", "note": "From the pricing date to the expiration date."}
       ],
       "formula": [
         "net_credit = call_bid - put_ask",
-        "status = cannot_price when either quote is missing or zero; excluded when days_to_expiration < collar_min_days_to_expiration; else priced",
+        "status = cannot_price when either quote is missing, zero or negative; excluded when days_to_expiration < collar_min_days_to_expiration; else priced",
         "annualized_net = (net_credit / spot) * 365 / days_to_expiration, only when priced"
       ],
       "thresholds": ["collar_min_days_to_expiration"],
@@ -395,6 +404,10 @@
       ],
       "thresholds": ["wash_sale_days_each_side"],
       "outputs": ["window_start", "window_end", "window_days", "triggering", "needs_review", "wash_sale"],
+      "notes": [
+        "Retirement accounts of every kind count. Revenue Ruling 2008-5 covers purchases in an IRA or Roth IRA only; treating every retirement plan the same way goes beyond the ruling and is this method's choice, as portfolio-process.md says.",
+        "An acquisition of unknown kind is an error, whatever its date or owner."
+      ],
       "ambiguous": true,
       "ambiguities": [
         {"note": "A sold put deep in the money \"can also count\": the doc does not say when. The reference implementation lists it under needs_review instead of deciding.", "doc": "docs/portfolio-process.md#placement"},

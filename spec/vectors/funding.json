@@ -78,6 +78,23 @@
     {"id": "sr1a-speculative-sleeve", "rule": "SR-1a", "case": "edge", "doc": "docs/pipeline.md#speculative-sleeve",
      "description": "Same inputs as the doc example, in the speculative sleeve: not applied.",
      "inputs": {"sleeve": "speculative", "operating_cash_flow": -100, "capital_expenditure": 300, "stock_issued": 350, "stock_repurchased": 50, "net_new_debt": 200},
-     "expected": {"funding_dependence": 1.25, "fires": "not_applied"}}
+     "expected": {"funding_dependence": 1.25, "fires": "not_applied"}},
+
+    {"id": "ttm-missing-q4", "rule": "ttm", "case": "fail", "doc": "docs/signals.md#funding-dependence",
+     "description": "The earlier fiscal year lacks its full-year figure, so its fourth quarter is unknown: an error, never skipped.",
+     "inputs": {"fiscal_years": [{"ytd_3m": 100, "ytd_6m": 220, "ytd_9m": 360}, {"ytd_3m": 130, "ytd_6m": 270, "ytd_9m": 400}]},
+     "expect_error": "lacks"},
+    {"id": "ttm-ytd-gap", "rule": "ttm", "case": "fail", "doc": "docs/signals.md#funding-dependence",
+     "description": "The latest year has a nine-month figure but no six-month figure: an error.",
+     "inputs": {"fiscal_years": [{"ytd_3m": 100, "ytd_6m": 220, "ytd_9m": 360, "ytd_12m": 500}, {"ytd_3m": 130, "ytd_9m": 400}]},
+     "expect_error": "gap"},
+    {"id": "sr1a-finance-lease-principal", "rule": "SR-1a", "case": "edge", "doc": "docs/signals.md#funding-dependence",
+     "description": "US GAAP: finance-lease principal 80 is deducted. Free cash flow 100 - 50 - 80 = -30, burn 30, 60 of stock issued, dependence 2.0: fires.",
+     "inputs": {"sleeve": "growth", "operating_cash_flow": 100, "capital_expenditure": 50, "finance_lease_principal_paid": 80, "stock_issued": 60},
+     "expected": {"free_cash_flow": -30, "cash_burn": 30, "funding_dependence": 2.0, "fires": true}},
+    {"id": "sr1a-finance-lease-principal-negative-convention", "rule": "SR-1a", "case": "edge", "doc": "docs/signals.md#funding-dependence",
+     "description": "The same inputs from a vendor that reports outflows as negative numbers: the same outputs.",
+     "inputs": {"sleeve": "growth", "outflow_sign_convention": "negative", "operating_cash_flow": 100, "capital_expenditure": -50, "finance_lease_principal_paid": -80, "stock_issued": 60},
+     "expected": {"free_cash_flow": -30, "cash_burn": 30, "funding_dependence": 2.0, "fires": true}}
   ]
 }

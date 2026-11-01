@@ -23,24 +23,29 @@
      "expected": {"status": "cannot_price"}},
 
     {"id": "rank-by-annualized", "rule": "collar.rank", "case": "pass", "doc": "docs/signals.md#collar-plus-income",
-     "description": "A (credit 1.50, 30 days) ranks ahead of B (credit 2.00, 90 days): ranking is on annualized net, not raw credit. C (0 days) and D (zero ask) are excluded.",
+     "description": "cand-1 (credit 1.50, 30 days) ranks ahead of cand-2 (credit 2.00, 90 days): ranking is on annualized net, not raw credit. cand-3 (0 days) and cand-4 (zero ask) are excluded.",
      "inputs": {"candidates": [
-       {"id": "B", "call_bid": 3.00, "put_ask": 1.00, "spot": 100, "days_to_expiration": 90},
-       {"id": "A", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 30},
-       {"id": "C", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 0},
-       {"id": "D", "call_bid": 2.10, "put_ask": 0, "spot": 100, "days_to_expiration": 30}]},
-     "expected": {"order": ["A", "B"], "excluded": ["C", "D"]}},
+       {"id": "cand-2", "call_bid": 3.00, "put_ask": 1.00, "spot": 100, "days_to_expiration": 90},
+       {"id": "cand-1", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 30},
+       {"id": "cand-3", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 0},
+       {"id": "cand-4", "call_bid": 2.10, "put_ask": 0, "spot": 100, "days_to_expiration": 30}]},
+     "expected": {"order": ["cand-1", "cand-2"], "excluded": ["cand-3", "cand-4"]}},
     {"id": "rank-one-day-included", "rule": "collar.rank", "case": "boundary", "doc": "docs/signals.md#collar-plus-income",
      "description": "A one-day candidate is ranked, not excluded.",
      "inputs": {"candidates": [
-       {"id": "E", "call_bid": 0.50, "put_ask": 0.40, "spot": 100, "days_to_expiration": 1},
-       {"id": "C", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 0}]},
-     "expected": {"order": ["E"], "excluded": ["C"]}},
+       {"id": "cand-5", "call_bid": 0.50, "put_ask": 0.40, "spot": 100, "days_to_expiration": 1},
+       {"id": "cand-3", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 0}]},
+     "expected": {"order": ["cand-5"], "excluded": ["cand-3"]}},
     {"id": "rank-none-priced", "rule": "collar.rank", "case": "fail", "doc": "docs/signals.md#collar-plus-income",
      "description": "Nothing can be priced: an empty ranking.",
      "inputs": {"candidates": [
-       {"id": "C", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 0},
-       {"id": "D", "call_bid": 0, "put_ask": 0.60, "spot": 100, "days_to_expiration": 30}]},
-     "expected": {"order": [], "excluded": ["C", "D"]}}
+       {"id": "cand-3", "call_bid": 2.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 0},
+       {"id": "cand-4", "call_bid": 0, "put_ask": 0.60, "spot": 100, "days_to_expiration": 30}]},
+     "expected": {"order": [], "excluded": ["cand-3", "cand-4"]}},
+
+    {"id": "collar-negative-bid", "rule": "collar.price", "case": "fail", "doc": "docs/signals.md#collar-plus-income",
+     "description": "A negative bid is a bad quote: cannot price.",
+     "inputs": {"call_bid": -0.10, "put_ask": 0.60, "spot": 100, "days_to_expiration": 30},
+     "expected": {"status": "cannot_price"}}
   ]
 }
