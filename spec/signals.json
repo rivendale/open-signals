@@ -1,0 +1,411 @@
+{
+  "spec": "open-signals machine-readable spec",
+  "method_version": "v0.3",
+  "canonical": "The docs own the meaning of every rule. This file encodes the arithmetic and cites the doc section for each rule. Where it and a doc disagree, the doc wins and this file is a bug.",
+  "conventions": {
+    "currency": "One reporting currency and one scale (thousands or millions) per evaluation, recorded with it (docs/data-quality.md#fundamentals).",
+    "positive_outflow": "A cash outflow given as a positive number. A vendor that reports outflows as negative numbers is flipped before use (outflow_sign_convention: negative).",
+    "signed": "Positive is a cash inflow, negative a cash outflow.",
+    "nonnegative": "Zero or more.",
+    "fraction": "A share as a decimal: 0.25 is 25%.",
+    "fraction_of_portfolio": "A share of the whole portfolio as a decimal (docs/pipeline.md#sizing-by-loss-budget).",
+    "not_applicable": "The string \"not_applicable\": the measure does not exist for these inputs. Never recorded as 0.",
+    "not_applied": "The string \"not_applied\": the rule is not applied in this sleeve or account.",
+    "unlimited": "The string \"unlimited\": runway when annual outflow is 0.",
+    "ambiguous": "A rule or part of a rule with ambiguous: true is one where the doc does not settle the answer. The reference implementation returns \"ambiguous\" or \"ambiguous_boundary\" there instead of choosing."
+  },
+  "vector_cases": {
+    "pass": "Ordinary inputs on which the rule's test is not triggered (no fire, no flag, no rebalance, no wash sale), or an ordinary computation.",
+    "fail": "Inputs on which the test is triggered.",
+    "boundary": "Inputs at or next to a threshold, showing which side the threshold itself falls on.",
+    "edge": "A case the docs call out by name (sign flips, not applicable, double counting, and the like)."
+  },
+  "thresholds": [
+    {"id": "funding_dependence_max", "value": 1.0, "unit": "ratio", "comparison": "fires when funding dependence > value", "used_by": ["SR-1a"], "doc": "docs/signals.md#funding-dependence"},
+    {"id": "runway_min_quarters", "value": 4.0, "unit": "quarters", "comparison": "fires when runway < value", "used_by": ["SR-1b", "K2"], "doc": "docs/signals.md#runway"},
+    {"id": "concentration_max_share", "value": 0.25, "unit": "fraction", "comparison": "flag when top-customer share > value or any backlog share > value", "used_by": ["signal.customer_concentration"], "doc": "docs/signals.md#customer-concentration"},
+    {"id": "k3_backlog_share_min", "value": 0.25, "unit": "fraction", "comparison": "anchor customer when backlog share (or revenue-share fallback) at the last filing before the event > value", "used_by": ["K3"], "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders"},
+    {"id": "k3_contract_cut_min", "value": 0.25, "unit": "fraction", "comparison": "a cut in contract value counts when > value", "used_by": ["K3"], "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders"},
+    {"id": "mscore_read_closely_lower", "value": -2.22, "unit": "score", "comparison": "lower edge of the band read more closely; upper edge is the implementation's cutoff", "used_by": ["flag.mscore"], "doc": "docs/signals.md#forensic-flags"},
+    {"id": "earnings_ahead_of_cash_years", "value": 2, "unit": "fiscal years", "comparison": "consecutive years required", "used_by": ["flag.earnings_ahead_of_cash"], "doc": "docs/signals.md#forensic-flags"},
+    {"id": "size_ceiling_share_of_sleeve", "value": 0.08, "unit": "fraction of sleeve", "comparison": "target size <= value * sleeve weight", "used_by": ["sizing.precedence"], "doc": "docs/portfolio-process.md#limits"},
+    {"id": "speculative_ceiling_share_of_sleeve", "value": 0.05, "unit": "fraction of sleeve", "comparison": "speculative target size <= value * sleeve weight", "used_by": ["sizing.precedence"], "doc": "docs/portfolio-process.md#limits"},
+    {"id": "entry_floor_share_of_sleeve", "value": 0.02, "unit": "fraction of sleeve", "comparison": "at entry, bought only when size >= value * sleeve weight", "used_by": ["sizing.precedence"], "doc": "docs/portfolio-process.md#limits"},
+    {"id": "speculative_stressed_loss_per_dollar", "value": 1.0, "unit": "loss per dollar held", "comparison": "fixed value in the speculative sleeve", "used_by": ["sizing.precedence"], "doc": "docs/pipeline.md#sizing-by-loss-budget"},
+    {"id": "drift_band_relative", "value": 0.25, "unit": "fraction of target", "comparison": "rebalance when |weight - target| > value * target", "used_by": ["limits.drift_band"], "doc": "docs/portfolio-process.md#limits"},
+    {"id": "wash_sale_days_each_side", "value": 30, "unit": "calendar days", "comparison": "window is sale date - value through sale date + value, inclusive (61 days)", "used_by": ["tax.wash_sale_window"], "doc": "docs/portfolio-process.md#placement"},
+    {"id": "collar_min_days_to_expiration", "value": 1, "unit": "calendar days", "comparison": "a candidate with days < value is excluded, never annualized", "used_by": ["collar.price", "collar.rank"], "doc": "docs/signals.md#collar-plus-income"}
+  ],
+  "rules": [
+    {
+      "id": "ttm",
+      "name": "Trailing twelve months from year-to-date figures",
+      "kind": "definition",
+      "doc": "docs/signals.md#funding-dependence",
+      "inputs": [
+        {"name": "fiscal_years", "unit": "currency", "sign": "as reported", "note": "Chronological list of fiscal years, each with ytd_3m, ytd_6m, ytd_9m, ytd_12m year-to-date values. The latest year may stop early."}
+      ],
+      "formula": [
+        "quarter_1 = ytd_3m",
+        "quarter_k = ytd_(3k)m - ytd_(3k-3)m for k = 2, 3",
+        "quarter_4 = ytd_12m - ytd_9m   (full year minus nine-month year to date)",
+        "ttm = sum of the last four discrete quarters"
+      ],
+      "outputs": ["quarters", "ttm"],
+      "notes": ["Fewer than four quarters is an error: a single quarter is never multiplied by four."]
+    },
+    {
+      "id": "signal.funding_dependence",
+      "name": "Free cash flow, cash burn and funding dependence",
+      "kind": "definition",
+      "doc": "docs/signals.md#funding-dependence",
+      "inputs": [
+        {"name": "operating_cash_flow", "unit": "currency", "sign": "signed", "note": "TTM."},
+        {"name": "stock_based_compensation", "unit": "currency", "sign": "nonnegative", "note": "TTM."},
+        {"name": "capital_expenditure", "unit": "currency", "sign": "positive_outflow", "note": "TTM."},
+        {"name": "finance_lease_principal_paid", "unit": "currency", "sign": "positive_outflow", "note": "TTM. Zero for an IFRS filer after normalization."},
+        {"name": "stock_issued", "unit": "currency", "sign": "nonnegative", "note": "TTM cash proceeds."},
+        {"name": "stock_repurchased", "unit": "currency", "sign": "positive_outflow", "note": "TTM."},
+        {"name": "net_new_debt", "unit": "currency", "sign": "signed", "note": "TTM, including convertibles; borrowing less repayment."},
+        {"name": "outflow_sign_convention", "unit": "enum", "sign": "n/a", "note": "positive (default) or negative: how the vendor reports capital expenditure, finance-lease principal and stock repurchased."},
+        {"name": "basis", "unit": "enum", "sign": "n/a", "note": "US_GAAP (default) or IFRS."},
+        {"name": "ifrs_lease_principal_paid", "unit": "currency", "sign": "positive_outflow", "note": "IFRS only: lease principal shown in financing, moved into operating cash flow."},
+        {"name": "ifrs_interest_paid_in_financing", "unit": "currency", "sign": "positive_outflow", "note": "IFRS only: interest paid shown in financing, moved into operating cash flow."}
+      ],
+      "formula": [
+        "IFRS: operating_cash_flow -= ifrs_lease_principal_paid + ifrs_interest_paid_in_financing; finance_lease_principal_paid must be 0",
+        "free_cash_flow = operating_cash_flow - stock_based_compensation - capital_expenditure - finance_lease_principal_paid",
+        "cash_burn = max(0, -free_cash_flow)",
+        "net_stock_issued = stock_issued - stock_repurchased",
+        "external_funding = net_stock_issued + net_new_debt",
+        "funding_dependence = external_funding / cash_burn, or not_applicable when cash_burn = 0 or external_funding <= 0"
+      ],
+      "outputs": ["operating_cash_flow_normalized", "free_cash_flow", "cash_burn", "net_stock_issued", "external_funding", "funding_dependence"]
+    },
+    {
+      "id": "SR-1a",
+      "name": "Dependent",
+      "kind": "sell_rule",
+      "doc": "docs/signals.md#funding-dependence",
+      "also_cites": ["docs/sell-rules.md#the-four-sell-rules", "docs/pipeline.md#speculative-sleeve"],
+      "inputs": [
+        {"name": "(all inputs of signal.funding_dependence)", "unit": "currency", "sign": "as above"},
+        {"name": "sleeve", "unit": "enum", "sign": "n/a", "note": "speculative, or any other sleeve name."}
+      ],
+      "formula": ["fires = free_cash_flow < 0 and funding_dependence != not_applicable and funding_dependence > funding_dependence_max"],
+      "thresholds": ["funding_dependence_max"],
+      "applies_to": "Every sleeve except the speculative sleeve (not_applied there). Checked at each quarterly filing.",
+      "outputs": ["fires"],
+      "notes": ["free_cash_flow is net of stock-based compensation, so unlike SR-1b this test can be met by a business whose only shortfall is stock-based compensation, if it also raises more than that amount. The docs state the stock-based-compensation guard for SR-1b only."]
+    },
+    {
+      "id": "signal.runway",
+      "name": "Liquidity runway in quarters",
+      "kind": "definition",
+      "doc": "docs/signals.md#runway",
+      "inputs": [
+        {"name": "cash_and_cash_equivalents", "unit": "currency", "sign": "nonnegative", "note": "Excluding restricted cash."},
+        {"name": "restricted_cash", "unit": "currency", "sign": "nonnegative", "note": "Recorded, never added to liquidity."},
+        {"name": "short_term_investments", "unit": "currency", "sign": "nonnegative", "note": "Marketable securities reported as current, excluding pledged or restricted ones."},
+        {"name": "pledged_or_restricted_investments", "unit": "currency", "sign": "nonnegative", "note": "Recorded, never added to liquidity."},
+        {"name": "facilities", "unit": "currency", "sign": "nonnegative", "note": "List of {kind, undrawn, committed, conditions_met}. Counted only when kind is credit_line, committed is true and conditions_met is true. An uncommitted line, an at-the-market equity program (kind atm_equity_program) or a line with an unmet condition is not counted."},
+        {"name": "operating_cash_flow_ttm", "unit": "currency", "sign": "signed", "note": "After the IFRS normalization in signal.funding_dependence. Stock-based compensation is not deducted."},
+        {"name": "interest_paid_in_ocf", "unit": "currency", "sign": "positive_outflow", "note": "Interest paid inside operating cash flow, including the interest part of finance-lease payments."},
+        {"name": "operating_lease_payments_in_ocf", "unit": "currency", "sign": "positive_outflow", "note": "Operating-lease payments inside operating cash flow."},
+        {"name": "capital_expenditure_planned_next_12m", "unit": "currency", "sign": "positive_outflow", "note": "The company's stated plan; null when it states none."},
+        {"name": "capital_expenditure_ttm", "unit": "currency", "sign": "positive_outflow", "note": "Used when no plan is stated."},
+        {"name": "scheduled_debt_service_next_12m", "unit": "currency", "sign": "positive_outflow", "note": "Interest and principal due in the next twelve months from the debt maturity note, excluding lease liabilities."},
+        {"name": "lease_payments_next_12m", "unit": "currency", "sign": "positive_outflow", "note": "All lease payments due in the next twelve months, operating and finance."}
+      ],
+      "formula": [
+        "liquidity = cash_and_cash_equivalents + short_term_investments + sum(counted facilities.undrawn)",
+        "operating_cash_burn = max(0, -(operating_cash_flow_ttm + interest_paid_in_ocf + operating_lease_payments_in_ocf))",
+        "capital_expenditure_used = capital_expenditure_planned_next_12m if stated else capital_expenditure_ttm",
+        "annual_outflow = operating_cash_burn + capital_expenditure_used + scheduled_debt_service_next_12m + lease_payments_next_12m",
+        "runway_quarters = 4 * liquidity / annual_outflow, or unlimited when annual_outflow = 0"
+      ],
+      "outputs": ["liquidity", "operating_cash_burn", "capital_expenditure_used", "annual_outflow", "runway_quarters"],
+      "ambiguous": true,
+      "ambiguities": [
+        {"note": "IFRS filers. The normalization moves lease principal into operating cash flow, but the operating-cash-burn add-back names only interest and operating-lease payments. For an IFRS filer it is not stated whether the moved lease principal is added back; if it is not, leases are counted in burn and again in lease_payments_next_12m. The vectors cover US GAAP filers only.", "doc": "docs/signals.md#runway"}
+      ]
+    },
+    {
+      "id": "SR-1b",
+      "name": "Unfunded burn",
+      "kind": "sell_rule",
+      "doc": "docs/signals.md#runway",
+      "also_cites": ["docs/sell-rules.md#the-four-sell-rules", "docs/pipeline.md#speculative-sleeve"],
+      "inputs": [
+        {"name": "(all inputs of signal.runway)", "unit": "currency", "sign": "as above"},
+        {"name": "sleeve", "unit": "enum", "sign": "n/a", "note": "speculative, or any other sleeve name."}
+      ],
+      "formula": [
+        "burns_cash = operating_cash_burn + capital_expenditure_ttm > 0",
+        "fires = burns_cash and runway_quarters != unlimited and runway_quarters < runway_min_quarters"
+      ],
+      "thresholds": ["runway_min_quarters"],
+      "applies_to": "Every sleeve except the speculative sleeve (not_applied there), whatever the funding dependence, including not_applicable. Checked at each quarterly filing.",
+      "outputs": ["burns_cash", "fires"],
+      "notes": ["The gate uses TTM capital expenditure, while annual_outflow uses the stated plan when there is one. Both are as the doc states."]
+    },
+    {
+      "id": "K1",
+      "name": "Distress language",
+      "kind": "kill_criterion",
+      "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders",
+      "inputs": [
+        {"name": "going_concern", "unit": "boolean", "sign": "n/a", "note": "A going-concern paragraph."},
+        {"name": "covenant_breach", "unit": "boolean", "sign": "n/a"},
+        {"name": "lender_waiver_or_forbearance", "unit": "boolean", "sign": "n/a"}
+      ],
+      "formula": ["fires = going_concern or covenant_breach or lender_waiver_or_forbearance"],
+      "applies_to": "Capital-intensive builders, in every sleeve.",
+      "outputs": ["fires"]
+    },
+    {
+      "id": "K2",
+      "name": "Liquidity runway",
+      "kind": "kill_criterion",
+      "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders",
+      "also_cites": ["docs/signals.md#runway"],
+      "inputs": [
+        {"name": "(all inputs of signal.runway)", "unit": "currency", "sign": "as above"},
+        {"name": "capital_intensive_builder", "unit": "boolean", "sign": "n/a"}
+      ],
+      "formula": ["fires = runway_quarters != unlimited and runway_quarters < runway_min_quarters  (no burn gate)"],
+      "thresholds": ["runway_min_quarters"],
+      "applies_to": "Capital-intensive builders, in every sleeve; not_applicable otherwise.",
+      "outputs": ["fires"]
+    },
+    {
+      "id": "K3",
+      "name": "Anchor customer lost",
+      "kind": "kill_criterion",
+      "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders",
+      "also_cites": ["docs/signals.md#customer-concentration"],
+      "inputs": [
+        {"name": "event", "unit": "enum", "sign": "n/a", "note": "termination, default, contract_value_cut or none."},
+        {"name": "contract_value_cut_fraction", "unit": "fraction", "sign": "nonnegative", "note": "Required when event is contract_value_cut. Computed by the adopter; see ambiguities."},
+        {"name": "backlog_share_at_last_filing", "unit": "fraction", "sign": "nonnegative", "note": "The customer's share of backlog at the last filing before the event; null when not disclosed."},
+        {"name": "revenue_share_at_last_filing", "unit": "fraction", "sign": "nonnegative", "note": "Fallback when backlog share is not disclosed; the result is then marked unverified."}
+      ],
+      "formula": [
+        "share_used = backlog_share_at_last_filing, else revenue_share_at_last_filing (share_unverified = true)",
+        "anchor_customer = share_used > k3_backlog_share_min",
+        "fires = anchor_customer and (event in {termination, default} or (event = contract_value_cut and contract_value_cut_fraction > k3_contract_cut_min))"
+      ],
+      "thresholds": ["k3_backlog_share_min", "k3_contract_cut_min"],
+      "outputs": ["share_used", "share_unverified", "anchor_customer", "fires"],
+      "ambiguous": true,
+      "ambiguities": [
+        {"note": "\"A cut of more than 25% in contract value\" does not say what the cut is measured against (the contract value before the cut, at the last filing, or an annual run rate) or whether it is total or annual value. The spec takes the cut fraction as an input instead of choosing.", "doc": "docs/kill-criteria.md#shared-criteria-for-capital-intensive-builders"}
+      ]
+    },
+    {
+      "id": "signal.customer_concentration",
+      "name": "Customer concentration flag",
+      "kind": "flag",
+      "doc": "docs/signals.md#customer-concentration",
+      "inputs": [
+        {"name": "total_revenue", "unit": "currency", "sign": "nonnegative"},
+        {"name": "total_backlog", "unit": "currency", "sign": "nonnegative", "note": "Null when not disclosed."},
+        {"name": "customers", "unit": "currency", "sign": "nonnegative", "note": "List of {revenue, backlog}; backlog null when not disclosed by customer."}
+      ],
+      "formula": [
+        "top_customer_share = max(customer.revenue) / total_revenue",
+        "backlog share per customer = customer.backlog / total_backlog, else customer.revenue / total_revenue (backlog_share_unverified = true)",
+        "flagged = top_customer_share > concentration_max_share or max_backlog_share > concentration_max_share"
+      ],
+      "thresholds": ["concentration_max_share"],
+      "outputs": ["top_customer_share", "max_backlog_share", "backlog_share_unverified", "flagged"]
+    },
+    {
+      "id": "flag.mscore",
+      "name": "Beneish M-Score screen",
+      "kind": "forensic_flag",
+      "doc": "docs/signals.md#forensic-flags",
+      "inputs": [
+        {"name": "m_score", "unit": "score", "sign": "signed", "note": "Computed by the implementation with coefficients and input definitions it records; the docs do not fix them."},
+        {"name": "cutoff", "unit": "score", "sign": "signed", "note": "The implementation's cutoff. Beneish, Lee and Nichols (2013) use -1.78."},
+        {"name": "cutoff_source", "unit": "text", "sign": "n/a", "note": "Required: the source of the cutoff."}
+      ],
+      "formula": [
+        "status = flag when m_score > cutoff",
+        "status = read_closely when mscore_read_closely_lower < m_score < cutoff",
+        "status = none when m_score < mscore_read_closely_lower",
+        "status = ambiguous_boundary when m_score equals either edge"
+      ],
+      "thresholds": ["mscore_read_closely_lower"],
+      "applies_to": "Score-based: checked at each annual filing.",
+      "outputs": ["status"],
+      "ambiguous": true,
+      "ambiguities": [
+        {"note": "The docs do not fix the coefficients, the model form or the cutoff; they require the implementation to record them, citing -1.78 as the 2013 paper's cutoff.", "doc": "docs/signals.md#forensic-flags"},
+        {"note": "Whether a score exactly at the cutoff is a flag, and whether the band \"between -2.22 and -1.78\" includes its edges, is not stated.", "doc": "docs/signals.md#forensic-flags"}
+      ]
+    },
+    {
+      "id": "flag.event",
+      "name": "Auditor change, non-reliance or restatement",
+      "kind": "forensic_flag",
+      "doc": "docs/signals.md#forensic-flags",
+      "inputs": [
+        {"name": "auditor_change_item_4_01", "unit": "boolean", "sign": "n/a"},
+        {"name": "non_reliance_item_4_02", "unit": "boolean", "sign": "n/a"},
+        {"name": "restatement", "unit": "boolean", "sign": "n/a"}
+      ],
+      "formula": ["fires = auditor_change_item_4_01 or non_reliance_item_4_02 or restatement; checked on receipt"],
+      "outputs": ["fires", "checked"]
+    },
+    {
+      "id": "flag.earnings_ahead_of_cash",
+      "name": "Earnings ahead of cash",
+      "kind": "forensic_flag",
+      "doc": "docs/signals.md#forensic-flags",
+      "inputs": [
+        {"name": "years", "unit": "currency", "sign": "signed", "note": "Chronological list of fiscal years with net_income, net_income_continuing_ops, operating_cash_flow and total_assets (nonnegative)."}
+      ],
+      "formula": [
+        "total_accruals_to_total_assets = (net_income_continuing_ops - operating_cash_flow) / total_assets, per year",
+        "net_income_above_ocf = net_income > operating_cash_flow in each of the latest two years",
+        "flag = net_income_above_ocf or tata_rising"
+      ],
+      "thresholds": ["earnings_ahead_of_cash_years"],
+      "applies_to": "Score-based: checked at each annual filing, so the latest years are used.",
+      "outputs": ["total_accruals_to_total_assets", "net_income_above_ocf", "tata_rising", "flag"],
+      "ambiguous": true,
+      "ambiguities": [
+        {"note": "\"Total accruals to total assets rising in two consecutive years\" can mean two consecutive increases (three years of data) or an increase from one year to the next (two years). The reference implementation returns tata_rising = \"ambiguous\" when the two readings disagree.", "doc": "docs/signals.md#forensic-flags"}
+      ]
+    },
+    {
+      "id": "flag.longer_asset_lives",
+      "name": "Longer asset lives",
+      "kind": "forensic_flag",
+      "doc": "docs/signals.md#forensic-flags",
+      "inputs": [
+        {"name": "carrying_amount", "unit": "currency", "sign": "nonnegative", "note": "At the change date."},
+        {"name": "residual_value", "unit": "currency", "sign": "nonnegative"},
+        {"name": "old_remaining_life", "unit": "years", "sign": "positive"},
+        {"name": "new_remaining_life", "unit": "years", "sign": "positive"}
+      ],
+      "formula": [
+        "depreciable_base = carrying_amount - residual_value",
+        "depreciation_old_basis = depreciable_base / old_remaining_life",
+        "depreciation_new_basis = depreciable_base / new_remaining_life",
+        "extra_pretax_profit = depreciation_old_basis - depreciation_new_basis",
+        "flag = new_remaining_life > old_remaining_life"
+      ],
+      "outputs": ["depreciable_base", "depreciation_old_basis", "depreciation_new_basis", "extra_pretax_profit", "flag"]
+    },
+    {
+      "id": "collar.price",
+      "name": "Collar plus income: pricing one candidate",
+      "kind": "definition",
+      "doc": "docs/signals.md#collar-plus-income",
+      "inputs": [
+        {"name": "call_bid", "unit": "price", "sign": "positive", "note": "Missing or zero means cannot price."},
+        {"name": "put_ask", "unit": "price", "sign": "positive", "note": "Missing or zero means cannot price, never free."},
+        {"name": "spot", "unit": "price", "sign": "positive"},
+        {"name": "days_to_expiration", "unit": "calendar days", "sign": "nonnegative", "note": "From the pricing date to the expiration date."}
+      ],
+      "formula": [
+        "net_credit = call_bid - put_ask",
+        "status = cannot_price when either quote is missing or zero; excluded when days_to_expiration < collar_min_days_to_expiration; else priced",
+        "annualized_net = (net_credit / spot) * 365 / days_to_expiration, only when priced"
+      ],
+      "thresholds": ["collar_min_days_to_expiration"],
+      "outputs": ["status", "net_credit"],
+      "notes": ["The vectors check net_credit and status only. They stop before any yield figure (COMPLIANCE.md, guardrail 3)."]
+    },
+    {
+      "id": "collar.rank",
+      "name": "Collar plus income: ranking candidates",
+      "kind": "definition",
+      "doc": "docs/signals.md#collar-plus-income",
+      "inputs": [
+        {"name": "candidates", "unit": "price", "sign": "as collar.price", "note": "List of collar.price inputs, each with an id."}
+      ],
+      "formula": ["order = priced candidate ids sorted by annualized_net, highest first; excluded = ids that cannot be priced or are excluded"],
+      "outputs": ["order", "excluded"]
+    },
+    {
+      "id": "sizing.precedence",
+      "name": "Sizing by loss budget, with caps and entry floor",
+      "kind": "limit",
+      "doc": "docs/pipeline.md#sizing-by-loss-budget",
+      "also_cites": ["docs/portfolio-process.md#limits"],
+      "inputs": [
+        {"name": "bucket", "unit": "fraction_of_portfolio", "sign": "nonnegative", "note": "{budget, used}: the factor bucket's loss budget and the stressed loss already used."},
+        {"name": "nodes", "unit": "fraction_of_portfolio", "sign": "nonnegative", "note": "Map of node name to {budget, used}."},
+        {"name": "stressed_loss_per_dollar", "unit": "loss per dollar held", "sign": "positive", "note": "Fixed at 1.0 in the speculative sleeve."},
+        {"name": "tier_ceiling", "unit": "fraction_of_portfolio", "sign": "nonnegative"},
+        {"name": "sleeve", "unit": "enum", "sign": "n/a"},
+        {"name": "sleeve_weight", "unit": "fraction_of_portfolio", "sign": "nonnegative"},
+        {"name": "is_entry", "unit": "boolean", "sign": "n/a", "note": "Default true. The floor applies at entry only."}
+      ],
+      "formula": [
+        "remaining = budget - used, for the bucket and each node",
+        "budget_size = max(0, min(remaining bucket, min over nodes of remaining node) / stressed_loss_per_dollar)",
+        "sleeve_limit = size_ceiling_share_of_sleeve (speculative: speculative_ceiling_share_of_sleeve) * sleeve_weight",
+        "size = min(budget_size, tier_ceiling, sleeve_limit)",
+        "binding = every constraint equal to size: bucket, node:<name>, tier, sleeve_limit",
+        "at entry: status = not_bought and size = 0 when size < entry_floor_share_of_sleeve * sleeve_weight"
+      ],
+      "thresholds": ["size_ceiling_share_of_sleeve", "speculative_ceiling_share_of_sleeve", "entry_floor_share_of_sleeve", "speculative_stressed_loss_per_dollar"],
+      "outputs": ["budget_size", "size", "binding", "entry_floor", "status"],
+      "notes": ["When two constraints tie, all are recorded; the doc asks for the binding constraint and does not say how to break a tie."]
+    },
+    {
+      "id": "limits.drift_band",
+      "name": "Drift band",
+      "kind": "limit",
+      "doc": "docs/portfolio-process.md#limits",
+      "also_cites": ["docs/portfolio-process.md#taxable-and-retirement-accounts-are-run-differently"],
+      "inputs": [
+        {"name": "target_weight", "unit": "fraction", "sign": "positive"},
+        {"name": "weight", "unit": "fraction", "sign": "nonnegative"},
+        {"name": "account_type", "unit": "enum", "sign": "n/a", "note": "retirement or taxable."}
+      ],
+      "formula": [
+        "lower = target_weight * (1 - drift_band_relative); upper = target_weight * (1 + drift_band_relative)",
+        "rebalance = weight < lower or weight > upper (the edges are inside the band); not_applied in taxable accounts"
+      ],
+      "thresholds": ["drift_band_relative"],
+      "applies_to": "Checked at the scheduled review.",
+      "outputs": ["lower", "upper", "rebalance"]
+    },
+    {
+      "id": "tax.wash_sale_window",
+      "name": "Wash-sale window across accounts",
+      "kind": "tax",
+      "doc": "docs/portfolio-process.md#placement",
+      "also_cites": ["docs/sell-rules.md#the-four-sell-rules"],
+      "inputs": [
+        {"name": "sale_date", "unit": "date", "sign": "n/a", "note": "ISO 8601."},
+        {"name": "is_loss", "unit": "boolean", "sign": "n/a"},
+        {"name": "acquisitions", "unit": "date", "sign": "n/a", "note": "List of {id, date, owner (self or spouse), account (taxable or retirement), kind (purchase, dividend_reinvestment, bought_call, sold_put_deep_itm), substantially_identical (boolean, the adopter's judgment)}."}
+      ],
+      "formula": [
+        "window = [sale_date - wash_sale_days_each_side, sale_date + wash_sale_days_each_side], calendar days, inclusive (61 days)",
+        "triggering = acquisitions inside the window, substantially identical, owner self or spouse, any account, kind purchase, dividend_reinvestment or bought_call",
+        "needs_review = such acquisitions of kind sold_put_deep_itm",
+        "wash_sale = triggering is not empty; not_applicable when the sale is not at a loss"
+      ],
+      "thresholds": ["wash_sale_days_each_side"],
+      "outputs": ["window_start", "window_end", "window_days", "triggering", "needs_review", "wash_sale"],
+      "ambiguous": true,
+      "ambiguities": [
+        {"note": "A sold put deep in the money \"can also count\": the doc does not say when. The reference implementation lists it under needs_review instead of deciding.", "doc": "docs/portfolio-process.md#placement"},
+        {"note": "Acquirers other than the investor and a spouse (for example a dependent, a trust or an entity the investor controls) are not addressed; the reference implementation raises an error for them.", "doc": "docs/portfolio-process.md#placement"}
+      ]
+    }
+  ],
+  "not_encoded": [
+    {"what": "Holding period (more than one year) and the collar tax checks (sections 1092, 1233(b), 1259)", "doc": "docs/signals.md#tax-interaction", "why": "The docs state the conditions but not a day-count convention, and several checks need a written judgment."},
+    {"what": "Strike selection within a tolerance", "doc": "docs/signals.md#collar-plus-income", "why": "The tolerance is given as an example, not a setting, and selection needs an option chain."},
+    {"what": "Name-specific kill-criterion patterns", "doc": "docs/kill-criteria.md#patterns-for-name-specific-criteria", "why": "They are templates; each becomes computable only once written for a name."},
+    {"what": "Data-quality checks (for example the 3% source-disagreement rule)", "doc": "docs/data-quality.md", "why": "They act on data pulls, not on the rule inputs; out of scope for this version of the spec."}
+  ]
+}

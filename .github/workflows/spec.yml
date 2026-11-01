@@ -1,0 +1,26 @@
+name: spec
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check every vector against the reference implementation
+        env:
+          PYTHONPATH: reference
+        run: python -m open_signals.check spec/vectors
+      - name: Coverage and consistency tests
+        env:
+          PYTHONPATH: reference
+        run: python -m unittest discover -s reference/tests -v
