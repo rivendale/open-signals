@@ -12,6 +12,9 @@ Added:
 - [reference/](reference/): a stdlib-only Python reference implementation (MIT), a vector runner, and a coverage test
   that every rule has an implementation and a vector.
 - CI: `.github/workflows/spec.yml` runs the vectors and the coverage test on pull requests and on pushes to main.
+- CI: `.github/workflows/hygiene.yml` runs the shared rivendale hygiene check, pinned by commit and configured in
+  `.hygiene.json`: executable bits, invisible characters, stale dated markers in the docs, and the vectors and tests run
+  as root in a throwaway container.
 - [docs/thresholds.md](docs/thresholds.md): every numeric threshold with its value, where it is defined, and its
   source.
 

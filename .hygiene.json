@@ -1,0 +1,9 @@
+{
+  "_comment": "Schema: rivendale/opensource tools/hygiene/README.md. Keys starting with _ are comments.",
+  "stale_pattern": "\\b(?:checked|rechecked|verified|reviewed|read|as of)[:\\s]+(?:on\\s+)?(\\d{4}-\\d{2}-\\d{2})\\b",
+  "stale_globs": ["README.md", "COMPLIANCE.md", "CONTRIBUTING.md", "docs/**/*.md"],
+  "root_safety": [
+    "PYTHONPATH=reference python3 -m open_signals.check spec/vectors",
+    "PYTHONPATH=reference python3 -m unittest discover -s reference/tests"
+  ]
+}

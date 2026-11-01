@@ -48,6 +48,9 @@ PYTHONPATH=reference python3 -m open_signals.check spec/vectors
 PYTHONPATH=reference python3 -m unittest discover -s reference/tests
 ```
 
+CI runs both on every pull request and push to main ([spec.yml](.github/workflows/spec.yml)), and the shared
+rivendale hygiene check ([hygiene.yml](.github/workflows/hygiene.yml), configured in [.hygiene.json](.hygiene.json)).
+
 The spec is JSON, not YAML, so that any implementation, and this one, can read it with a standard library parser and
 no dependency. An implementation that passes every vector can say so for the tagged version it follows.
 
